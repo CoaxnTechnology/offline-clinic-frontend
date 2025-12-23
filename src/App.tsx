@@ -17,7 +17,7 @@ import EditProfile from "./pages/Editprofile";
 import CreateService from "./pages/CreateService";
 import Payment from "./pages/Payment";
 import AllBookings from "./pages/Booking";
-import Patients from "./pages/patients";
+import Patients from "./pages/Patients";
 const queryClient = new QueryClient();
 
 function App() {
