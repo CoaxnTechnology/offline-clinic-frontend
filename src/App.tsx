@@ -11,13 +11,13 @@ import ProtectedRoute from "./pages/Auth/ProtectedRoute";
 import Userdetails from "./pages/Userdetails";
 import Servicedetails from "./pages/Servicedetails";
 import Service from "./pages/Service";
-import Category from "./pages/Category";
 import GenerateFakeUsers from "./pages/GenerateFakeUsers";
 import EditProfile from "./pages/Editprofile";
 import CreateService from "./pages/CreateService";
 import Payment from "./pages/Payment";
 import AllBookings from "./pages/Booking";
 import Patients from "./pages/Patients";
+import Appointments from "./pages/Appointment";
 const queryClient = new QueryClient();
 
 function App() {
@@ -51,11 +51,11 @@ function App() {
               }
             />
             <Route
-              path="/users/:id"
+              path="/appointment"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Userdetails />
+                    <Appointments />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -76,16 +76,6 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Service />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/category"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Category />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -38,10 +38,10 @@ interface NavItem {
 const navigationItems: NavItem[] = [
   { title: "Dashboard", url: "/Home", icon: LayoutDashboard },
   { title: "Patients", url: "/patients", icon: Users },
- // { title: "Category", url: "/category", icon: Layers },
- // { title: "Service", url: "/service", icon: Briefcase },
- // { title: "Fake-User", url: "/FakeUser", icon: UserX },
- // { title: "Payment", url: "/Payment", icon: CreditCard },
+  { title: "Appointment", url: "/appointment", icon: Layers },
+  // { title: "Service", url: "/service", icon: Briefcase },
+  // { title: "Fake-User", url: "/FakeUser", icon: UserX },
+  // { title: "Payment", url: "/Payment", icon: CreditCard },
   //{ title: "Booking", url: "/booking", icon: CalendarCheck },
 ];
 

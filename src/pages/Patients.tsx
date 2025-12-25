@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Info, Plus, Search, X } from "lucide-react";
 import {
   Drawer,
@@ -23,6 +23,35 @@ import { useSidebar } from "@/components/ui/sidebar";
 export default function Patients() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const doctors = [
+    { id: "d1", name: "Dr. Sharma" },
+    { id: "d2", name: "Dr. Patel" },
+    { id: "d3", name: "Dr. Gupta" },
+  ];
+
+  // Slots per doctor per date
+  const slotsByDoctorAndDate: Record<string, Record<string, string[]>> = {
+    d1: {
+      "2025-12-26": ["09:00", "09:30", "10:00", "11:00", "12:00"],
+      "2025-12-27": ["10:00", "10:30", "12:00"],
+    },
+    d2: {
+      "2025-12-26": ["09:45", "11:15", "13:00"],
+      "2025-12-27": ["10:00", "16:00"],
+    },
+    d3: {
+      "2025-12-26": ["09:00", "10:00", "11:00"],
+    },
+  };
+
+  // Already booked slots
+  const bookedSlots: Record<string, boolean> = {
+    "d1_2025-12-26_09:30": true,
+    "d1_2025-12-26_10:00": true,
+    "d2_2025-12-26_11:15": true,
+  };
+
   const initialPatients = [
     {
       id: "P001",
@@ -125,8 +154,17 @@ export default function Patients() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const { state, isMobile } = useSidebar(); // only state
-
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingPatient, setBookingPatient] = useState<any>(null);
+  const [doctor, setDoctor] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const collapsed = state === "collapsed";
+  // const [date, setDate] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState("");
+
   const patientsFiltered = patients.filter((p) => {
     const q = search.toLowerCase();
     return (
@@ -136,6 +174,22 @@ export default function Patients() {
       p.email.toLowerCase().includes(q)
     );
   });
+  useEffect(() => {
+    if (!doctor || !date) {
+      setAvailableSlots([]);
+      setSelectedSlot("");
+      return;
+    }
+
+    const slots = slotsByDoctorAndDate[doctor]?.[date] || [];
+
+    setAvailableSlots(slots);
+    setSelectedSlot("");
+  }, [doctor, date]);
+  console.log("Doctor:", doctor);
+  console.log("Date:", date);
+  console.log("Slots:", slotsByDoctorAndDate[doctor]?.[date]);
+
   return (
     <div className="p-6 space-y-6">
       {/* PAGE HEADER */}
@@ -226,7 +280,8 @@ export default function Patients() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        alert("Book Appointment");
+                        setBookingPatient(p);
+                        setBookingOpen(true);
                       }}
                       className="px-4 py-2 text-xs bg-cyan-600 text-white rounded-lg"
                     >
@@ -276,9 +331,10 @@ export default function Patients() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  alert("Book Appointment");
+                  setBookingPatient(p);
+                  setBookingOpen(true);
                 }}
-                className="mt-3 w-full py-2 rounded-lg bg-cyan-600 text-white text-sm"
+                className="mt-3 w-full py-2 bg-cyan-600 text-white rounded-lg"
               >
                 Book Appointment
               </button>
@@ -411,6 +467,109 @@ export default function Patients() {
               className="w-full py-2 rounded-lg border hover:bg-gray-50"
             >
               Close
+            </button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={bookingOpen} onOpenChange={setBookingOpen}>
+        <DrawerContent
+          className="
+    fixed bottom-0 left-0 right-0
+    md:right-0 md:left-auto md:w-[420px]
+    h-[90vh] bg-white
+    rounded-t-2xl md:rounded-l-2xl
+  "
+        >
+          <DrawerHeader className="flex items-center justify-between">
+            <DrawerTitle>Book Appointment</DrawerTitle>
+            <DrawerClose>
+              <X />
+            </DrawerClose>
+          </DrawerHeader>
+
+          <div className="p-6 space-y-5 overflow-y-auto">
+            <p className="text-sm text-gray-600">
+              Patient:{" "}
+              <b>
+                {bookingPatient?.firstName} {bookingPatient?.lastName}
+              </b>
+            </p>
+
+            {/* DOCTOR */}
+            <select
+              value={doctor}
+              onChange={(e) => setDoctor(e.target.value)}
+              className="w-full border px-4 py-2 rounded-lg"
+            >
+              <option value="">Select Doctor</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+
+            {/* DATE */}
+            <input
+              type="date"
+              value={date}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border px-4 py-2 rounded-lg cursor-pointer"
+            />
+
+            {/* TIME SLOTS */}
+            {doctor && date && (
+              <div>
+                <p className="text-sm font-semibold mb-2">Available Slots</p>
+
+                {availableSlots.length === 0 ? (
+                  <p className="text-sm text-red-500">No slots available</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableSlots.map((t) => {
+                      const isBooked = bookedSlots[`${doctor}_${date}_${t}`];
+
+                      return (
+                        <button
+                          key={t}
+                          disabled={isBooked}
+                          onClick={() => setTime(t)}
+                          className={`
+                      py-2 rounded-lg text-sm
+                      ${
+                        isBooked
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : time === t
+                          ? "bg-cyan-600 text-white"
+                          : "bg-gray-100 hover:bg-gray-200"
+                      }
+                    `}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DrawerFooter>
+            <button
+              onClick={() => {
+                if (!doctor || !date || !time) {
+                  alert("Please fill all fields");
+                  return;
+                }
+                alert("Appointment Booked ✅");
+                setBookingOpen(false);
+              }}
+              className="w-full py-3 bg-cyan-600 text-white rounded-lg"
+            >
+              Confirm Appointment
             </button>
           </DrawerFooter>
         </DrawerContent>
