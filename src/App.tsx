@@ -8,8 +8,6 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 import Login from "./pages/Auth/Login";
 import ProtectedRoute from "./pages/Auth/ProtectedRoute";
-import Userdetails from "./pages/Userdetails";
-import Servicedetails from "./pages/Servicedetails";
 import Service from "./pages/Service";
 import GenerateFakeUsers from "./pages/GenerateFakeUsers";
 import EditProfile from "./pages/Editprofile";
@@ -18,6 +16,7 @@ import Payment from "./pages/Payment";
 import AllBookings from "./pages/Booking";
 import Patients from "./pages/Patients";
 import Appointments from "./pages/Appointment";
+import Consultant from "./pages/Consultant";
 const queryClient = new QueryClient();
 
 function App() {
@@ -61,11 +60,11 @@ function App() {
               }
             />
             <Route
-              path="/service/:id"
+              path="/consultant"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Servicedetails />
+                    <Consultant />
                   </Layout>
                 </ProtectedRoute>
               }
