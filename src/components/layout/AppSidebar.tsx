@@ -4,10 +4,9 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   LayoutDashboard,
   Users,
-  Layers,
-  Briefcase,
-  UserX,
-  CreditCard,
+  Stethoscope,
+  Activity,
+  Calendar,
   CalendarCheck,
 } from "lucide-react";
 
@@ -37,10 +36,26 @@ interface NavItem {
 // Main navigation items
 const navigationItems: NavItem[] = [
   { title: "Dashboard", url: "/Home", icon: LayoutDashboard },
-  { title: "Patients", url: "/patients", icon: Users },
-  { title: "Appointment", url: "/appointment", icon: Layers },
-   { title: "Consultant", url: "/consultant", icon: Briefcase },
-  // { title: "Fake-User", url: "/FakeUser", icon: UserX },
+  {
+    title: "Patients",
+    url: "/patients",
+    icon: Users, // 👥 Patients list / records
+  },
+  {
+    title: "Appointment",
+    url: "/appointment",
+    icon: CalendarCheck, // 📅 Appointment booking & schedule
+  },
+  {
+    title: "Consultant",
+    url: "/consultant",
+    icon: Stethoscope, // 🩺 Doctor / consultation
+  },
+  {
+    title: "Technician",
+    url: "/technician",
+    icon: Activity, // 🩻 Technician / ultrasound / diagnostics
+  },
   // { title: "Payment", url: "/Payment", icon: CreditCard },
   //{ title: "Booking", url: "/booking", icon: CalendarCheck },
 ];
