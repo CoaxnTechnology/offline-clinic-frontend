@@ -1,24 +1,32 @@
 import { useState } from "react";
 import { X, Download, Printer } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useDicomImagesPolling } from "@/hooks/Dicom/useDicomImagesPolling";
+
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
   DrawerClose,
+  DrawerFooter,
 } from "@/components/ui/drawer";
 // helpers (Section, InfoRow) are defined below in this file
-
+import { useWithDoctorAppointments } from "@/hooks/appointments/useWithDoctorAppointments";
+import { useUpdateAppointmentStatus } from "@/hooks/appointments/useUpdateAppointmentStatus";
+import { useSendToDicomMWL } from "@/hooks/Dicom/useSendToDicomMWL";
 type AppointmentStatus =
   | "Waiting"
   | "With Doctor"
-  | "With Technician"
+  | "Sent to DICOM"
+  | "Study Completed"
   | "Completed";
 
 const statusColors: Record<AppointmentStatus, string> = {
   Waiting: "bg-yellow-100 text-yellow-800",
   "With Doctor": "bg-blue-100 text-blue-800",
-  "With Technician": "bg-purple-100 text-purple-800",
+  "Sent to DICOM": "bg-orange-100 text-orange-800",
+  "Study Completed": "bg-indigo-100 text-indigo-800",
   Completed: "bg-green-100 text-green-800",
 };
 
@@ -27,104 +35,126 @@ const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
 export default function Appointments() {
+  const { data, isLoading } = useWithDoctorAppointments();
+  const updateStatusMutation = useUpdateAppointmentStatus();
+  const sendToDicomMutation = useSendToDicomMWL();
+
   const [filter, setFilter] = useState<
     "today" | "tomorrow" | "yesterday" | "all"
   >("today");
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "all">(
-    "all"
+    "all",
   );
+  const navigate = useNavigate();
+
   const [selected, setSelected] = useState<any>(null);
   const [dicomOpen, setDicomOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [zoom, setZoom] = useState(1);
+  const apiAppointments =
+    data?.map((item: any) => ({
+      id: item.id,
+      patient: item.patient
+        ? `${item.patient.first_name} ${item.patient.last_name}`
+        : "N/A",
+      doctor: item.doctor,
+      department: item.department || "General",
+      date: item.date,
+      time: item.time,
+      status: item.status,
+      fullPatient: item.patient,
+      prescriptionId: item.prescription_id,
+      prescriptionPdf: item.prescription_pdf_path,
+    })) || [];
 
-  const [appointments, setAppointments] = useState([
-    {
-      id: "P001",
-      patient: "Ms. Aisha Khan",
-      title: "Ms.",
-      firstName: "Aisha",
-      lastName: "Khan",
-      gender: "Female",
-      birthDate: "1990-05-12",
-      identityNumber: "ID123456",
-      email: "aisha.khan@example.com",
-      phone: "+91 98765 43210",
-      height: "165",
-      weight: "60",
-      bloodGroup: "A+",
-      smoker: "No",
-      notes: "No known allergies",
-      primaryDoctor: "Dr. Sharma",
-      doctor: "Dr. Sharma",
-      date: today,
-      time: "09:00",
-      legacyNumber: "L-1001",
-      newPatient: "Yes",
+  console.log("Fetched Appointments from doctor:", apiAppointments);
+  const selectedPatient = selected?.fullPatient;
+  const filteredAppointments = apiAppointments
+    .filter((a) => a.status !== "Completed") // 🔥 hide completed
+    .filter((a) => {
+      if (filter === "today" && a.date !== today) return false;
+      if (filter === "tomorrow" && a.date !== tomorrow) return false;
+      if (filter === "yesterday" && a.date !== yesterday) return false;
+      if (statusFilter !== "all" && a.status !== statusFilter) return false;
+      return true;
+    });
+  console.log("STATUS FILTER:", statusFilter);
+  console.log("FILTERED:", filteredAppointments);
 
-      status: "With Doctor" as AppointmentStatus,
-      prescription: "",
-    },
-    {
-      id: 2,
-      patient: "Rohit Verma",
-      age: 38,
-      gender: "Male",
-      doctor: "Dr. Patel",
-      department: "Orthopedic",
-      date: today,
-      time: "11:30",
-      status: "Waiting" as AppointmentStatus,
-      prescription: "",
-    },
-  ]);
+  const handleSendToDicom = (id: number) => {
+    sendToDicomMutation.mutate(id, {
+      onSuccess: () => {
+        updateStatusMutation.mutate({
+          id,
+          status: "Sent to DICOM",
+        });
 
-  const filteredAppointments = appointments.filter((a) => {
-    if (filter === "today" && a.date !== today) return false;
-    if (filter === "tomorrow" && a.date !== tomorrow) return false;
-    if (filter === "yesterday" && a.date !== yesterday) return false;
-    if (statusFilter !== "all" && a.status !== statusFilter) return false;
-    return true;
-  });
-
-  const updateStatus = (id: any, status: AppointmentStatus) => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status } : a))
-    );
+        setStatusFilter("all"); // 🔥 important
+      },
+    });
   };
-  const [prescriptionItems, setPrescriptionItems] = useState([
-    {
-      name: "Paracetamol 500mg",
-      dosage: "1-0-1",
-      duration: "5 Days",
-      notes: "After food",
-    },
-  ]);
-  const addMedicine = () => {
-    setPrescriptionItems((prev) => [
-      ...prev,
-      { name: "", dosage: "", duration: "", notes: "" },
-    ]);
-  };
-  const updatePrescription = (id: any, value: string) => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, prescription: value } : a))
-    );
-  };
-  const updateMedicine = (index: number, key: string, value: string) => {
-    setPrescriptionItems((prev) =>
-      prev.map((m, i) => (i === index ? { ...m, [key]: value } : m))
+
+  const updateStatus = (id: number, status: AppointmentStatus) => {
+    updateStatusMutation.mutate(
+      { id, status },
+      {
+        onSuccess: () => {
+          if (status === "Completed") {
+            // remove from selected immediately
+            if (selected?.id === id) {
+              setSelected(null);
+            }
+          }
+        },
+      },
     );
   };
 
-  const removeMedicine = (index: number) => {
-    setPrescriptionItems((prev) => prev.filter((_, i) => i !== index));
+  const handleAddPrescription = (appointment: any) => {
+    navigate(`/prescription/${appointment.id}`, {
+      state: {
+        patient: appointment.fullPatient,
+        doctor: appointment.doctor,
+        department: appointment.department,
+      },
+    });
   };
+
+  const getFieldValue = (value: any) => {
+    // Handle null, undefined, empty strings, "N/A", and 0 (for numeric fields)
+    if (
+      value === null ||
+      value === undefined ||
+      value === "" ||
+      value === "N/A" ||
+      value === 0
+    ) {
+      return "N/A";
+    }
+    return value;
+  };
+  function DicomImageWatcher({
+    patientId,
+    appointmentId,
+  }: {
+    patientId: string;
+    appointmentId: number;
+  }) {
+    useDicomImagesPolling(
+      patientId,
+      appointmentId,
+      true, // enabled
+    );
+
+    return null;
+  }
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold">Appointments</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Consultant Dashboard</h1>
 
         <div className="flex flex-col sm:flex-row gap-2 items-center">
           <select
@@ -146,7 +176,8 @@ export default function Appointments() {
             <option value="all">All Status</option>
             <option value="Waiting">Waiting</option>
             <option value="With Doctor">With Doctor</option>
-            <option value="With Technician">With Technician</option>
+            <option>Sent to DICOM</option>
+            <option>Study Completed</option>
             <option value="Completed">Completed</option>
           </select>
         </div>
@@ -187,52 +218,22 @@ export default function Appointments() {
                   >
                     <option>Waiting</option>
                     <option>With Doctor</option>
-                    <option>With Technician</option>
+                    <option value="Sent to DICOM">Sent to DICOM</option>
+                    <option value="Study Completed">Study Completed</option>
                     <option>Completed</option>
                   </select>
                 </div>
 
                 {/* MOBILE: Prescription quick add/view */}
                 <div className="mt-3">
-                  <Section title="Prescription">
-                    <div className="space-y-2">
-                      {prescriptionItems.map((item, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <input
-                            value={item.name}
-                            onChange={(e) =>
-                              updateMedicine(index, "name", e.target.value)
-                            }
-                            placeholder="Medicine"
-                            className="flex-1 border rounded-lg px-2 py-1 text-sm"
-                          />
-
-                          <input
-                            value={item.dosage}
-                            onChange={(e) =>
-                              updateMedicine(index, "dosage", e.target.value)
-                            }
-                            placeholder="Dose"
-                            className="w-20 border rounded-lg px-2 py-1 text-sm"
-                          />
-
-                          <button
-                            onClick={() => removeMedicine(index)}
-                            className="text-red-500 text-sm"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-
-                      <button
-                        onClick={addMedicine}
-                        className="text-sm text-cyan-600 font-semibold"
-                      >
-                        + Add Medicine
-                      </button>
-                    </div>
-                  </Section>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => navigate(`/prescription/${a.id}`)}
+                      className="px-4 py-2 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+                    >
+                      Add Prescription
+                    </button>
+                  </td>
                 </div>
               </div>
 
@@ -300,113 +301,71 @@ export default function Appointments() {
                   >
                     <option>Waiting</option>
                     <option>With Doctor</option>
-                    <option>With Technician</option>
+                    <option value="Sent to DICOM">Sent to DICOM</option>
+                    <option value="Study Completed">Study Completed</option>
                     <option>Completed</option>
                   </select>
                 </td>
 
                 {/* PRESCRIPTION QUICK */}
-                <Section title="Prescription">
-                  <div className="space-y-4">
-                    {/* TABLE HEADER */}
-                    <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-gray-500">
-                      <div className="col-span-12 sm:col-span-4">Medicine</div>
-                      <div className="col-span-6 sm:col-span-2">Dosage</div>
-                      <div className="col-span-6 sm:col-span-2">Duration</div>
-                      <div className="col-span-12 sm:col-span-3">Notes</div>
-                      <div className="col-span-12 sm:col-span-1"></div>
-                    </div>
-
-                    {/* MEDICINE ROWS */}
-                    {prescriptionItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-12 gap-2 items-center"
-                      >
-                        <input
-                          value={item.name}
-                          onChange={(e) =>
-                            updateMedicine(index, "name", e.target.value)
-                          }
-                          placeholder="Paracetamol 500mg"
-                          className="col-span-12 sm:col-span-4 border rounded-lg px-3 py-2 text-sm"
-                        />
-
-                        <input
-                          value={item.dosage}
-                          onChange={(e) =>
-                            updateMedicine(index, "dosage", e.target.value)
-                          }
-                          placeholder="1-0-1"
-                          className="col-span-6 sm:col-span-2 border rounded-lg px-2 py-2 text-sm"
-                        />
-
-                        <input
-                          value={item.duration}
-                          onChange={(e) =>
-                            updateMedicine(index, "duration", e.target.value)
-                          }
-                          placeholder="5 Days"
-                          className="col-span-6 sm:col-span-2 border rounded-lg px-2 py-2 text-sm"
-                        />
-
-                        <input
-                          value={item.notes}
-                          onChange={(e) =>
-                            updateMedicine(index, "notes", e.target.value)
-                          }
-                          placeholder="After food"
-                          className="col-span-12 sm:col-span-3 border rounded-lg px-2 py-2 text-sm"
-                        />
-
-                        <button
-                          onClick={() => removeMedicine(index)}
-                          className="col-span-12 sm:col-span-1 text-red-500 text-sm hover:underline text-left sm:text-center"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-
-                    {/* ADD MEDICINE */}
+                <td className="px-6 py-4 space-x-2">
+                  {/* ADD BUTTON if no prescription */}
+                  {!a.prescriptionId && (
                     <button
-                      onClick={addMedicine}
-                      className="text-sm text-cyan-600 font-semibold hover:underline"
+                      onClick={() => handleAddPrescription(a)}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs"
                     >
-                      + Add Medicine
+                      Add Prescription
                     </button>
+                  )}
 
-                    {/* ACTIONS */}
-                    <div className="flex gap-3 pt-4">
-                      <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50">
-                        <Download size={16} /> Download PDF
-                      </button>
-                      <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50">
-                        <Printer size={16} /> Print
-                      </button>
-                    </div>
-                  </div>
-                </Section>
+                  {/* PRINT BUTTON if prescription exists */}
+                  {a.prescriptionId && (
+                    <button
+                      onClick={() => window.open(a.prescriptionPdf, "_blank")}
+                      className="px-3 py-1 bg-green-600 text-white rounded-lg text-xs"
+                    >
+                      Print / Download
+                    </button>
+                  )}
+                </td>
 
                 {/* FAKE DICOM */}
-                <td className="px-6 py-4">
-                  <div
-                    onClick={() => {
-                      setDicomOpen(true);
-                      setZoom(1);
-                    }}
-                    className="relative h-14 w-20 sm:h-16 sm:w-24 rounded-md overflow-hidden border bg-black cursor-zoom-in"
-                  >
-                    <img
-                      src="https://images.unsplash.com/photo-1582719478181-2c6e4c2b5a8b"
-                      alt="DICOM Preview"
-                      className="h-full w-full object-cover opacity-80"
-                    />
+                <td className="px-6 py-4 space-y-2">
+                  {/* 🔥 SEND BUTTON */}
+                  {a.status === "With Doctor" && (
+                    <button
+                      onClick={() => handleSendToDicom(a.id)}
+                      className="px-3 py-1 bg-orange-600 text-white rounded-lg text-xs"
+                    >
+                      Send to DICOM
+                    </button>
+                  )}
 
-                    <div className="absolute bottom-1 left-1 text-[9px] text-green-400 font-mono">
-                      Slice 12 / 64
-                    </div>
-                  </div>
+                  {/* 🔥 POLLING STATE */}
+                  {a.status === "Sent to DICOM" && (
+                    <>
+                      {/* 👇 This component starts polling automatically */}
+                      <DicomImageWatcher
+                        patientId={a.fullPatient?.id}
+                        appointmentId={a.id}
+                      />
+
+                      <span className="text-xs text-gray-500 animate-pulse">
+                        Waiting for Study...
+                      </span>
+                    </>
+                  )}
+
+                  {/* 🔥 STUDY COMPLETED */}
+                  {a.status === "Study Completed" && (
+                    <button
+                      onClick={() => navigate(`/pacs/${a.id}`)}
+                      className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs"
+                    >
+                      View DICOM
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -489,53 +448,145 @@ export default function Appointments() {
 
           {/* BODY */}
           <div className="p-6 overflow-y-auto space-y-6 text-sm">
-            {selected && (
+            {selectedPatient ? (
               <>
-                {/* PATIENT BASIC INFO */}
-                <Section title="Patient Information">
+                {/* PERSONAL INFO */}
+                <Section title="Personal Information">
+                  <InfoRow label="Patient ID" value={selectedPatient.id} />
                   <InfoRow
-                    label="Patient Name"
-                    value={`${selected.title} ${selected.firstName} ${selected.lastName}`}
+                    label="Title"
+                    value={getFieldValue(selectedPatient.title)}
                   />
-                  <InfoRow label="Gender" value={selected.gender} />
-                  <InfoRow label="Birth Date" value={selected.birthDate} />
-                  <InfoRow label="Blood Group" value={selected.bloodGroup} />
+                  <InfoRow
+                    label="Gender"
+                    value={getFieldValue(selectedPatient.gender)}
+                  />
+                  <InfoRow
+                    label="Birth Date"
+                    value={getFieldValue(selectedPatient.birth_date)}
+                  />
+                  <InfoRow
+                    label="Identity Number"
+                    value={getFieldValue(selectedPatient.identity_number)}
+                  />
+                  <InfoRow
+                    label="Maiden Name"
+                    value={getFieldValue(selectedPatient.maiden_name)}
+                  />
                 </Section>
 
                 {/* CONTACT INFO */}
                 <Section title="Contact Information">
-                  <InfoRow label="Phone" value={selected.phone} />
-                  <InfoRow label="Email" value={selected.email} />
+                  <InfoRow
+                    label="Phone"
+                    value={getFieldValue(selectedPatient.phone)}
+                  />
+                  <InfoRow
+                    label="Secondary Phone"
+                    value={getFieldValue(selectedPatient.secondary_phone)}
+                  />
+                  <InfoRow
+                    label="Other Phone"
+                    value={getFieldValue(selectedPatient.other_phone)}
+                  />
+                  <InfoRow
+                    label="Email"
+                    value={getFieldValue(selectedPatient.email)}
+                  />
                 </Section>
 
-                {/* MEDICAL DETAILS */}
-                <Section title="Medical Details">
-                  <InfoRow label="Height" value={`${selected.height} cm`} />
-                  <InfoRow label="Weight" value={`${selected.weight} kg`} />
-                  <InfoRow label="Smoker" value={selected.smoker} />
+                {/* MEDICAL INFO */}
+                <Section title="Medical Information">
+                  <InfoRow
+                    label="Blood Group"
+                    value={getFieldValue(selectedPatient.blood_group)}
+                  />
+                  <InfoRow
+                    label="Height"
+                    value={
+                      selectedPatient.height && selectedPatient.height > 0
+                        ? `${selectedPatient.height} cm`
+                        : "N/A"
+                    }
+                  />
+                  <InfoRow
+                    label="Weight"
+                    value={
+                      selectedPatient.weight && selectedPatient.weight > 0
+                        ? `${selectedPatient.weight} kg`
+                        : "N/A"
+                    }
+                  />
+                  <InfoRow
+                    label="Smoker"
+                    value={getFieldValue(selectedPatient.smoker)}
+                  />
+                  <InfoRow
+                    label="Cigarettes Per Day"
+                    value={getFieldValue(selectedPatient.cigarettes_per_day)}
+                  />
                   <InfoRow
                     label="Primary Doctor"
-                    value={selected.primaryDoctor}
+                    value={getFieldValue(selectedPatient.primary_doctor)}
                   />
                 </Section>
 
-                {/* CONSULTATION */}
-                <Section title="Consultation">
-                  <InfoRow label="Doctor" value={selected.primaryDoctor} />
-                  <InfoRow label="Status" value={selected.status} />
+                {/* MEDICAL HISTORY */}
+                <Section title="Medical History">
+                  <InfoRow
+                    label="Family History"
+                    value={getFieldValue(selectedPatient.family_history)}
+                  />
+                  <InfoRow
+                    label="Medical / Surgical History"
+                    value={getFieldValue(selectedPatient.medical_history)}
+                  />
+                  <InfoRow
+                    label="Gynecological History"
+                    value={getFieldValue(selectedPatient.gynecological_history)}
+                  />
+                  <InfoRow
+                    label="Allergies"
+                    value={getFieldValue(selectedPatient.allergies)}
+                  />
                 </Section>
 
-                {/* OTHER DETAILS */}
+                {/* OTHER */}
                 <Section title="Other Details">
                   <InfoRow
-                    label="Legacy Number"
-                    value={selected.legacyNumber}
+                    label="Delivery Location"
+                    value={getFieldValue(selectedPatient.delivery_location)}
                   />
-                  <InfoRow label="Notes" value={selected.notes} />
+                  <InfoRow
+                    label="Legacy Number"
+                    value={getFieldValue(selectedPatient.legacy_number)}
+                  />
+                  <InfoRow
+                    label="Social Security Number"
+                    value={getFieldValue(
+                      selectedPatient.social_security_number,
+                    )}
+                  />
+                  <InfoRow
+                    label="Notes"
+                    value={getFieldValue(selectedPatient.notes)}
+                  />
                 </Section>
               </>
+            ) : (
+              <div className="text-gray-500">No patient selected</div>
             )}
           </div>
+
+          {/* FOOTER */}
+          <DrawerFooter className="border-t bg-white">
+            <button
+              onClick={() => setDrawerOpen(false)}
+              className="w-full py-2 rounded-lg border hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>

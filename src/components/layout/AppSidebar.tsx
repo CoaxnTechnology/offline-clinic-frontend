@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Settings } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
+
 import {
   LayoutDashboard,
   Users,
   Stethoscope,
   Activity,
-  Calendar,
   CalendarCheck,
 } from "lucide-react";
 
@@ -24,59 +26,33 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-// Type definition for navigation items
 interface NavItem {
-  title: string;
+  key: string;
   url: string;
   icon: React.ComponentType<any>;
   subItems?: { title: string; url: string }[];
   hasSubmenu?: boolean;
 }
 
-// Main navigation items
-const navigationItems: NavItem[] = [
-  { title: "Dashboard", url: "/Home", icon: LayoutDashboard },
-  {
-    title: "Patients",
-    url: "/patients",
-    icon: Users, // 👥 Patients list / records
-  },
-  {
-    title: "Appointment",
-    url: "/appointment",
-    icon: CalendarCheck, // 📅 Appointment booking & schedule
-  },
-  {
-    title: "Consultant",
-    url: "/consultant",
-    icon: Stethoscope, // 🩺 Doctor / consultation
-  },
-  {
-    title: "Technician",
-    url: "/technician",
-    icon: Activity, // 🩻 Technician / ultrasound / diagnostics
-  },
-  // { title: "Payment", url: "/Payment", icon: CreditCard },
-  //{ title: "Booking", url: "/booking", icon: CalendarCheck },
-];
-
 export function AppSidebar() {
-  const { state } = useSidebar(); // only state
+  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const { t } = useTranslation();
 
-  const isSubmenuActive = (subItems?: { title: string; url: string }[]) =>
-    subItems?.some((item) => currentPath === item.url) ?? false;
+  // 🔥 Detect RTL
+  const isRTL = i18n.language === "ar";
 
-  const toggleExpanded = (title: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(title)
-        ? prev.filter((item) => item !== title)
-        : [...prev, title]
-    );
-  };
+  const navigationItems: NavItem[] = [
+    { key: "dashboard", url: "/Home", icon: LayoutDashboard },
+    { key: "patients", url: "/patients", icon: Users },
+    { key: "appointment", url: "/appointment", icon: CalendarCheck },
+    { key: "consultant", url: "/consultant", icon: Stethoscope },
+    { key: "staff", url: "/staff", icon: Activity },
+    { key: "settings", url: "/settings", icon: Settings },
+  ];
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -86,22 +62,20 @@ export function AppSidebar() {
         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-blue-500"
     );
 
-  const getSubmenuCls = ({ isActive }: { isActive: boolean }) =>
-    cn(
-      "group flex items-center gap-3 rounded-lg px-3 py-2 ml-6 text-sm transition-smooth relative",
-      isActive
-        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-        : "text-sidebar-foreground/80 hover:bg-sidebar-submenu hover:text-sidebar-foreground"
-    );
-
   return (
     <Sidebar
       className={cn(
-        "border-r border-sidebar-border transition-smooth bg-gradient-sidebar",
-        collapsed ? "w-14" : "w-64"
+        "border-sidebar-border transition-smooth bg-gradient-sidebar",
+        collapsed ? "w-14" : "w-64",
+
+        // ✅ Position Control Based On Language
+        isRTL
+          ? "border-l !left-auto !right-0"
+          : "border-r left-0"
       )}
       collapsible="icon"
     >
+      {/* HEADER */}
       <SidebarHeader className="p-4 border-b border-sidebar-border/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant">
@@ -110,65 +84,42 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sidebar-foreground font-bold text-xl tracking-tight">
-                Expert Echo
+                {t("hospitalName")}
               </span>
             </div>
           )}
         </div>
       </SidebarHeader>
 
+      {/* CONTENT */}
       <SidebarContent className="p-3">
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/70 uppercase tracking-wider text-xs font-semibold mb-3">
-            Menu
+            {t("menu")}
           </SidebarGroupLabel>
+
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {navigationItems.map((item) => {
-                const isExpanded = expandedItems.includes(item.title);
-                const hasActiveSubmenu = isSubmenuActive(item.subItems);
-
-                return (
-                  <div key={item.title}>
-                    <SidebarMenuItem>
-                      {item.hasSubmenu ? (
-                        <div
-                          className={cn(
-                            getNavCls({ isActive: hasActiveSubmenu }),
-                            "cursor-pointer"
-                          )}
-                          onClick={() => {
-                            if (!collapsed) toggleExpanded(item.title);
-                          }}
-                        >
-                          <item.icon className="h-5 w-5 flex-shrink-0" />
-                          {!collapsed && (
-                            <>
-                              <span className="truncate flex-1">
-                                {item.title}
-                              </span>
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 transition-smooth" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 transition-smooth" />
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <SidebarMenuButton asChild>
-                          <NavLink to={item.url} end className={getNavCls}>
-                            <item.icon className="h-5 w-5 flex-shrink-0" />
-                            {!collapsed && (
-                              <span className="truncate">{item.title}</span>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      )}
-                    </SidebarMenuItem>
-                  </div>
-                );
-              })}
+              {navigationItems.map((item) => (
+                <div key={item.key}>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={getNavCls}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && (
+                          <span className="truncate">
+                            {t(item.key)}
+                          </span>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </div>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

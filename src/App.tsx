@@ -9,13 +9,17 @@ import Layout from "./components/layout/Layout";
 import Login from "./pages/Auth/Login";
 import ProtectedRoute from "./pages/Auth/ProtectedRoute";
 import GenerateFakeUsers from "./pages/GenerateFakeUsers";
-import EditProfile from "./pages/Editprofile";
-import Payment from "./pages/Payment";
-import AllBookings from "./pages/Booking";
 import Patients from "./pages/Patients";
+import EditPatient from "./pages/EditPatient";
 import Appointments from "./pages/Appointment";
 import Consultant from "./pages/Consultant";
-import Technician from "./pages/Technician";
+import StaffPage from "./pages/Staff";
+import SettingsPage from "./pages/Settings";
+import PatientHistory from "./pages/PatientHistory";
+import Prescription from "./pages/Prescription";
+import ResetPassword from "./pages/ResetPassword";
+import PACSViewer from "./pages/PACSViewer";
+//import Technician from "./pages/Technician";
 const queryClient = new QueryClient();
 
 function App() {
@@ -49,6 +53,26 @@ function App() {
               }
             />
             <Route
+              path="/edit-patient"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <EditPatient />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-history/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PatientHistory />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/appointment"
               element={
                 <ProtectedRoute>
@@ -68,56 +92,51 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
-              path="/technician"
+              path="/patients/:id/edit"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <Technician />
+                    <EditPatient />
                   </Layout>
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/FakeUser"
+              path="/prescription/:id"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <GenerateFakeUsers />
+                    <Prescription />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/pacs/:appointmentId" element={<PACSViewer />} />
+
+            <Route
+              path="/staff"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StaffPage />
                   </Layout>
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/edit-user/:userId"
+              path="/settings"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <EditProfile />
+                    <SettingsPage />
                   </Layout>
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/payment"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Payment />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/booking"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <AllBookings />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+
             {/* Fallback */}
             <Route path="*" element={<NotFound />} />
           </Routes>

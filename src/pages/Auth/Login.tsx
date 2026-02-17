@@ -1,81 +1,101 @@
 import React, { useState, FormEvent } from "react";
-import { Mail, Lock } from "lucide-react";
+import { User, Lock, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { loginService } from "@/services/auth.service";
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setError("");
 
-    // 👉 Direct redirect to home/dashboard
-    navigate("/home");
-    // agar tumhara dashboard route kuch aur hai to
-    // navigate("/dashboard");
+    console.log("Submitting Login...");
+    console.log("Base URL:", import.meta.env.VITE_API_BASE_URL);
+    console.log("Payload:", { username, password });
+
+    if (!username || !password) {
+      setError("Please enter username and password");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await loginService({
+        username,
+        password,
+      });
+
+      console.log("Login Success Response:", response);
+
+      if (response.success) {
+        const user = response.data;
+
+        // ✅ Save Access Token
+        localStorage.setItem("access_token", response.access_token);
+
+        // ✅ Save Refresh Token
+        localStorage.setItem("refresh_token", response.refresh_token);
+        // Save role separately (optional)
+        localStorage.setItem("role", user.role);
+
+        console.log("User Role:", user.role);
+
+        navigate("/home");
+      } else {
+        setError("Invalid username or password");
+      }
+    } catch (err: any) {
+      console.log("Login Error Full Object:", err);
+      console.log("Error Response:", err.response);
+      console.log("Error Data:", err.response?.data);
+      console.log("Error Status:", err.response?.status);
+      console.log("Error Message:", err.message);
+
+      setError(err.response?.data?.message || err.message || "Login Failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#06b6c9] flex items-center justify-center px-4 py-6 relative overflow-hidden">
-      {/* MAIN WRAPPER */}
+    <div className="min-h-screen bg-[#06b6c9] flex items-center justify-center px-4 py-6">
       <div className="relative w-full max-w-6xl min-h-[620px]">
-
-        {/* LEFT BACKGROUND (Desktop only) */}
+        {/* Background Left (Desktop) */}
         <div className="hidden lg:block absolute inset-0 bg-gradient-to-br from-[#06b6c9] to-[#0891b2] rounded-[32px]" />
 
-        {/* RIGHT WHITE PANEL */}
-        <div
-          className="
-            relative
-            bg-white
-            rounded-[24px]
-            shadow-xl
-            lg:absolute lg:right-0 lg:top-0 lg:h-full lg:w-[48%]
-            w-full
-          "
-        />
+        {/* White Panel */}
+        <div className="relative bg-white rounded-[24px] shadow-xl lg:absolute lg:right-0 lg:top-0 lg:h-full lg:w-[48%] w-full" />
 
-        {/* CONTENT GRID */}
         <div className="relative z-10 grid lg:grid-cols-2 grid-cols-1 min-h-[620px]">
-
-          {/* LEFT CONTENT (Desktop only) */}
+          {/* LEFT SIDE */}
           <div className="hidden lg:flex flex-col justify-center px-14 text-white">
-            <div className="mb-8 flex items-center gap-2">
+            <div className="mb-8 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold">
-                X
+                EE
               </div>
               <h1 className="text-2xl font-bold">Expert Echo</h1>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 w-[85%]">
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/4320/4320337.png"
-                alt="medical"
-                className="w-full"
-              />
             </div>
 
             <h3 className="mt-6 text-lg font-semibold">
               Manage hospital operations
             </h3>
             <p className="text-sm opacity-90 mt-2 w-[80%]">
-              Securely manage patients, diagnostics, and medical workflows
-              with a centralized hospital management system.
+              Securely manage patients and medical workflows with a centralized
+              system.
             </p>
           </div>
 
-          {/* RIGHT CONTENT */}
+          {/* RIGHT SIDE */}
           <div className="flex flex-col justify-center px-6 sm:px-10 lg:px-12 py-10">
-
-            {/* Mobile logo */}
             <div className="lg:hidden mb-6 text-center">
-              <h1 className="text-2xl font-bold text-[#06b6c9]">
-                Expert Echo
-              </h1>
-              <p className="text-sm text-gray-500">
-                Medical Management System
-              </p>
+              <h1 className="text-2xl font-bold text-[#06b6c9]">Expert Echo</h1>
+              <p className="text-sm text-gray-500">Medical Management System</p>
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-2">
@@ -85,20 +105,25 @@ const Login: React.FC = () => {
               Enter your credentials to access admin panel
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="mb-4 p-3 text-sm text-red-600 bg-red-100 rounded-lg">
+                {error}
+              </div>
+            )}
 
-              {/* Email */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Username */}
               <div>
                 <label className="text-sm text-gray-600 mb-1 block">
-                  Email Address
+                  Username
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    type="email"
-                    placeholder="Enter email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#06b6c9] outline-none"
                   />
                 </div>
@@ -106,14 +131,9 @@ const Login: React.FC = () => {
 
               {/* Password */}
               <div>
-                <div className="flex justify-between items-center">
-                  <label className="text-sm text-gray-600 mb-1 block">
-                    Password
-                  </label>
-                  <span className="text-sm text-[#06b6c9] cursor-pointer">
-                    Forgot Password?
-                  </span>
-                </div>
+                <label className="text-sm text-gray-600 mb-1 block">
+                  Password
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
@@ -126,33 +146,16 @@ const Login: React.FC = () => {
                 </div>
               </div>
 
-              {/* Remember me */}
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <input type="checkbox" className="accent-[#06b6c9]" />
-                Remember Me
-              </div>
-
-              {/* Button */}
               <button
                 type="submit"
-                className="
-                  w-full sm:w-auto
-                  bg-[#06b6c9]
-                  hover:bg-[#0891b2]
-                  text-white
-                  px-10 py-3
-                  rounded-lg
-                  text-sm
-                  font-semibold
-                  transition
-                "
+                disabled={loading}
+                className="w-full bg-[#06b6c9] hover:bg-[#0891b2] text-white px-10 py-3 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-70"
               >
-                Sign In
+                {loading && <Loader2 className="animate-spin" size={18} />}
+                {loading ? "Signing In..." : "Sign In"}
               </button>
-
             </form>
           </div>
-
         </div>
       </div>
     </div>

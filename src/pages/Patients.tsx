@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Info, Plus, Search, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Info, Plus, Search, X, Edit2 } from "lucide-react";
+import Swal from "sweetalert2";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerContent,
@@ -9,201 +12,203 @@ import {
   DrawerClose,
   DrawerFooter,
 } from "../components/ui/drawer";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "../components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 import { useSidebar } from "@/components/ui/sidebar";
+import { usePatients } from "@/hooks/patients/usePatients";
+import { useSearchPatients } from "@/hooks/patients/useSearchPatients";
+import { useAddPatient } from "@/hooks/patients/useAddPatient";
+import { useCreateAppointment } from "@/hooks/appointments/useCreateAppointment";
+import { useDeletePatient } from "@/hooks/patients/useDeletePatient";
 
 export default function Patients() {
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
-  const [detailOpen, setDetailOpen] = useState(false);
-  const doctors = [
-    { id: "d1", name: "Dr. Sharma" },
-    { id: "d2", name: "Dr. Patel" },
-    { id: "d3", name: "Dr. Gupta" },
-  ];
-
-  // Slots per doctor per date
-  const slotsByDoctorAndDate: Record<string, Record<string, string[]>> = {
-    d1: {
-      "2025-12-26": ["09:00", "09:30", "10:00", "11:00", "12:00"],
-      "2025-12-27": ["10:00", "10:30", "12:00"],
-    },
-    d2: {
-      "2025-12-26": ["09:45", "11:15", "13:00"],
-      "2025-12-27": ["10:00", "16:00"],
-    },
-    d3: {
-      "2025-12-26": ["09:00", "10:00", "11:00"],
-    },
-  };
-
-  // Already booked slots
-  const bookedSlots: Record<string, boolean> = {
-    "d1_2025-12-26_09:30": true,
-    "d1_2025-12-26_10:00": true,
-    "d2_2025-12-26_11:15": true,
-  };
-
-  const initialPatients = [
-    {
-      id: "P001",
-      title: "Ms.",
-      firstName: "Aisha",
-      lastName: "Khan",
-      gender: "Female",
-      birthDate: "1990-05-12",
-      identityNumber: "ID123456",
-      email: "aisha.khan@example.com",
-      phone: "+91 98765 43210",
-      height: "165",
-      weight: "60",
-      bloodGroup: "A+",
-      smoker: "No",
-      notes: "No known allergies",
-      primaryDoctor: "Dr. Sharma",
-      legacyNumber: "L-1001",
-      newPatient: "Yes",
-    },
-    {
-      id: "P002",
-      title: "Mr.",
-      firstName: "Rohit",
-      lastName: "Verma",
-      gender: "Male",
-      birthDate: "1985-11-02",
-      identityNumber: "ID223344",
-      email: "rohit.verma@example.com",
-      phone: "+91 91234 56789",
-      height: "172",
-      weight: "78",
-      bloodGroup: "B+",
-      smoker: "Yes",
-      notes: "Diabetic",
-      primaryDoctor: "Dr. Patel",
-      legacyNumber: "L-1002",
-      newPatient: "No",
-    },
-    {
-      id: "P003",
-      title: "Mrs.",
-      firstName: "Sunita",
-      lastName: "Rao",
-      gender: "Female",
-      birthDate: "1978-03-22",
-      identityNumber: "ID998877",
-      email: "sunita.rao@example.com",
-      phone: "+91 90123 45678",
-      height: "158",
-      weight: "62",
-      bloodGroup: "O-",
-      smoker: "No",
-      notes: "Hypertension",
-      primaryDoctor: "Dr. Iyer",
-      legacyNumber: "L-1003",
-      newPatient: "No",
-    },
-    {
-      id: "P004",
-      title: "Mr.",
-      firstName: "Vikram",
-      lastName: "Singh",
-      gender: "Male",
-      birthDate: "1995-07-30",
-      identityNumber: "ID556677",
-      email: "vikram.singh@example.com",
-      phone: "+91 99876 54321",
-      height: "180",
-      weight: "85",
-      bloodGroup: "AB+",
-      smoker: "No",
-      notes: "Asthma",
-      primaryDoctor: "Dr. Rao",
-      legacyNumber: "L-1004",
-      newPatient: "Yes",
-    },
-    {
-      id: "P005",
-      title: "Ms.",
-      firstName: "Meera",
-      lastName: "Shah",
-      gender: "Female",
-      birthDate: "2000-01-15",
-      identityNumber: "ID334455",
-      email: "meera.shah@example.com",
-      phone: "+91 90000 11122",
-      height: "160",
-      weight: "55",
-      bloodGroup: "A-",
-      smoker: "No",
-      notes: "Healthy",
-      primaryDoctor: "Dr. Gupta",
-      legacyNumber: "L-1005",
-      newPatient: "Yes",
-    },
-  ];
-
-  const [patients] = useState(initialPatients);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const { state, isMobile } = useSidebar(); // only state
+  const { state, isMobile } = useSidebar();
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingPatient, setBookingPatient] = useState<any>(null);
-  const [doctor, setDoctor] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const collapsed = state === "collapsed";
-  // const [date, setDate] = useState("");
-  const [selectedDoctor, setSelectedDoctor] = useState("");
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState("");
+  const { data: patientsData, isLoading } = usePatients(1, 20);
 
-  const patientsFiltered = patients.filter((p) => {
-    const q = search.toLowerCase();
-    return (
-      p.firstName.toLowerCase().includes(q) ||
-      p.lastName.toLowerCase().includes(q) ||
-      p.phone.toLowerCase().includes(q) ||
-      p.email.toLowerCase().includes(q)
-    );
+  const { data: searchData, isLoading: isSearching } = useSearchPatients(
+    search.trim(),
+  );
+
+  const addPatient = useAddPatient();
+  const createAppointment = useCreateAppointment();
+  const deletePatient = useDeletePatient();
+
+  // Patient form state
+  const [formData, setFormData] = useState({
+    title: "",
+    first_name: "",
+    last_name: "",
+    maiden_name: "",
+    gender: "",
+    birth_date: "",
+    identity_number: "",
+    social_security_number: "",
+    email: "",
+    phone: "",
+    secondary_phone: "",
+    other_phone: "",
+    occupation: "",
+    height: "",
+    weight: "",
+    blood_group: "",
+    smoker: "No",
+    cigarettes_per_day: "",
+    family_history: "",
+    medical_history: "",
+    gynecological_history: "",
+    allergies: "",
+    notes: "",
+    primary_doctor: "",
+    delivery_location: "",
+    legacy_number: "",
+    new_patient: true,
   });
-  useEffect(() => {
-    if (!doctor || !date) {
-      setAvailableSlots([]);
-      setSelectedSlot("");
-      return;
+  const handleAddPrescription = (appointment: any) => {
+    navigate(`/prescription/${appointment.id}`, {
+      state: {
+        patient: appointment.fullPatient,
+        doctor: appointment.doctor,
+        department: appointment.department,
+      },
+    });
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      first_name: "",
+      last_name: "",
+      maiden_name: "",
+      gender: "",
+      birth_date: "",
+      identity_number: "",
+      social_security_number: "",
+      email: "",
+      phone: "",
+      secondary_phone: "",
+      other_phone: "",
+      occupation: "",
+      height: "",
+      weight: "",
+      blood_group: "",
+      smoker: "No",
+      cigarettes_per_day: "",
+      family_history: "",
+      medical_history: "",
+      gynecological_history: "",
+      allergies: "",
+      notes: "",
+      primary_doctor: "",
+      delivery_location: "",
+      legacy_number: "",
+      new_patient: true,
+    });
+  };
+
+  // Debounced search: call API when search changes
+
+  // Helper function to get field value or show N/A
+  const getFieldValue = (value: any) => {
+    // Handle null, undefined, empty strings, "N/A", and 0 (for numeric fields)
+    if (
+      value === null ||
+      value === undefined ||
+      value === "" ||
+      value === "N/A" ||
+      value === 0
+    ) {
+      return "N/A";
     }
+    return value;
+  };
 
-    const slots = slotsByDoctorAndDate[doctor]?.[date] || [];
+  const patients = search ? searchData?.data || [] : patientsData?.data || [];
+  console.log("patientsData:", patientsData);
+  const totalPatients = search
+    ? searchData?.pagination?.total || 0
+    : patientsData?.pagination?.total || 0;
+  const handleDeletePatient = (patientId: string) => {
+    Swal.fire({
+      title: "Delete Patient",
+      text: `Are you sure you want to delete ${selectedPatient?.first_name} ${selectedPatient?.last_name}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+      backdrop: true,
+      allowOutsideClick: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const toastId = toast.loading("Deleting patient...");
 
-    setAvailableSlots(slots);
-    setSelectedSlot("");
-  }, [doctor, date]);
-  console.log("Doctor:", doctor);
-  console.log("Date:", date);
-  console.log("Slots:", slotsByDoctorAndDate[doctor]?.[date]);
+        deletePatient.mutate(patientId, {
+          onSuccess: () => {
+            toast.dismiss(toastId);
+            toast.success("Patient deleted successfully!");
+            Swal.fire({
+              title: "Deleted!",
+              text: "Patient has been deleted successfully.",
+              icon: "success",
+              timer: 2000,
+              showConfirmButton: false,
+            });
+            setDrawerOpen(false);
+            setSelectedPatient(null);
+          },
+          onError: (error: any) => {
+            toast.dismiss(toastId);
+            const errorMsg =
+              error?.response?.data?.message || "Failed to delete patient";
+            toast.error(errorMsg);
+            Swal.fire({
+              title: "Error",
+              text: errorMsg,
+              icon: "error",
+              confirmButtonColor: "#ef4444",
+            });
+          },
+        });
+      }
+    });
+  };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-7xl mx-auto">
       {/* PAGE HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Patients</h1>
-          <p className="text-sm text-gray-500">
-            Total Patients: {patients.length}
+          <h1 className="text-xl sm:text-2xl font-bold">Patients</h1>
+          <p className="text-xs sm:text-sm text-gray-500">
+            Total Patients: {totalPatients}
           </p>
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-green-600 text-white px-5 py-2 rounded-lg font-semibold"
+          onClick={() => {
+            setShowModal(true);
+            toast.info("Fill out all patient details carefully");
+          }}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
         >
           <Plus size={18} />
           Add Patient
@@ -211,137 +216,302 @@ export default function Patients() {
       </div>
 
       {/* SEARCH */}
-      <div className="relative max-w-md">
+      <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search patient"
-          className="w-full pl-10 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-[#06b6c9]"
+          className="w-full pl-10 pr-4 py-2 sm:py-3 rounded-xl border focus:ring-2 focus:ring-[#06b6c9]"
         />
       </div>
 
-      {/* LIST PLACEHOLDER */}
-      {/* LIST */}
-      <div className="bg-white rounded-2xl shadow-md text-sm overflow-hidden">
-        {/* DESKTOP TABLE */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gradient-to-r from-cyan-50 to-blue-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold">
-                  Patient
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold">
-                  Contact
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold">
-                  Email
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold">
-                  Doctor
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold">
-                  Action
-                </th>
-              </tr>
-            </thead>
+      {/* LOADING */}
+      {(isLoading || isSearching) && (
+        <div className="bg-white rounded-2xl shadow-md text-sm overflow-hidden">
+          {/* DESKTOP SKELETON */}
+          <div className="hidden lg:block">
+            <table className="min-w-full">
+              <thead className="bg-gradient-to-r from-cyan-50 to-blue-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Patient
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Contact
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Email
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Doctor
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {[...Array(5)].map((_, idx) => (
+                  <tr key={idx} className="hover:bg-cyan-50">
+                    <td className="px-6 py-4">
+                      <div className="flex gap-3 items-center">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="min-w-0 flex-1">
+                          <Skeleton className="h-4 w-24 mb-2" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-32" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <Skeleton className="h-8 w-20 rounded-lg" />
+                        <Skeleton className="h-8 w-24 rounded-lg" />
+                        <Skeleton className="h-8 w-20 rounded-lg" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            <tbody className="divide-y">
-              {patientsFiltered.map((p) => (
-                <tr
-                  key={p.id}
-                  onClick={() => {
-                    setSelectedPatient(p);
-                    setDrawerOpen(true);
-                  }}
-                  className="hover:bg-cyan-50 cursor-pointer"
-                >
-                  <td className="px-6 py-4 flex gap-3">
+          {/* MOBILE SKELETON */}
+          <div className="lg:hidden space-y-4">
+            {[...Array(5)].map((_, idx) => (
+              <div
+                key={idx}
+                className="border rounded-2xl p-4 shadow-sm bg-white"
+              >
+                <div className="flex justify-between">
+                  <div className="flex gap-3 flex-1">
+                    <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2">
+                  <Skeleton className="h-9 w-full rounded-lg" />
+                  <Skeleton className="h-9 w-full rounded-lg" />
+                  <Skeleton className="h-9 w-full rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* LIST PLACEHOLDER */}
+      {!isLoading && !isSearching && patients.length === 0 && (
+        <div className="text-center py-6 text-gray-500">No patients found</div>
+      )}
+      {/* LIST */}
+      {!isLoading && !isSearching && (
+        <div className="bg-white rounded-2xl shadow-md text-sm overflow-hidden">
+          {/* DESKTOP TABLE */}
+          <div className="hidden lg:block">
+            <table className="min-w-full">
+              <thead className="bg-gradient-to-r from-cyan-50 to-blue-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Patient
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Contact
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Email
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Doctor
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y">
+                {patients.map((p) => (
+                  <tr
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedPatient(p);
+                      setDrawerOpen(true);
+                    }}
+                    className="hover:bg-cyan-50 cursor-pointer"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex gap-3 min-w-0 items-center">
+                        <Avatar>
+                          <AvatarFallback>
+                            {p.first_name?.[0]}
+                            {p.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">
+                            {p.first_name} {p.last_name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {p.id}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-block max-w-[160px] truncate">
+                        {p.phone}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-block max-w-[200px] truncate">
+                        {p.email}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="max-w-[160px]">
+                        <Badge className="truncate block">
+                          {getFieldValue(p.primary_doctor)}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toast.info("Loading patient details for editing...");
+                          navigate(`/patients/${p.id}/edit`);
+                        }}
+                        className="px-4 py-2 text-xs bg-orange-600 text-white rounded-lg hover:bg-orange-700 mr-2 transition-colors"
+                      >
+                        <Edit2 size={14} className="inline mr-1" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toast.info("Loading patient history...");
+                          navigate(`/patient-history/${p.id}`);
+                        }}
+                        className="px-4 py-2 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 mr-2 transition-colors"
+                      >
+                        View History
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBookingPatient(p);
+                          setBookingOpen(true);
+                          toast.info(
+                            `Ready to book appointment for ${p.first_name}`,
+                          );
+                        }}
+                        className="px-4 py-2 text-xs bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                      >
+                        Book Now
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* MOBILE CARDS */}
+          <div className="lg:hidden space-y-4">
+            {" "}
+            {patients.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => {
+                  setSelectedPatient(p);
+                  setDrawerOpen(true);
+                }}
+                className="border rounded-2xl p-4 shadow-sm bg-white transition hover:shadow-md"
+              >
+                <div className="flex justify-between">
+                  <div className="flex gap-3">
                     <Avatar>
                       <AvatarFallback>
-                        {p.firstName[0]}
-                        {p.lastName[0]}
+                        {p.first_name?.[0]}
+                        {p.last_name?.[0]}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-semibold">
-                        {p.firstName} {p.lastName}
+                        {p.first_name} {p.last_name}
                       </p>
                       <p className="text-xs text-gray-500">{p.id}</p>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">{p.phone}</td>
-                  <td className="px-6 py-4">{p.email}</td>
-                  <td className="px-6 py-4">
-                    <Badge>{p.primaryDoctor}</Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setBookingPatient(p);
-                        setBookingOpen(true);
-                      }}
-                      className="px-4 py-2 text-xs bg-cyan-600 text-white rounded-lg"
-                    >
-                      Book Now
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* MOBILE CARDS */}
-        <div className="md:hidden space-y-4 p-4">
-          {patientsFiltered.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => {
-                setSelectedPatient(p);
-                setDrawerOpen(true);
-              }}
-              className="border rounded-xl p-4 shadow-sm active:scale-[0.98]"
-            >
-              <div className="flex justify-between">
-                <div className="flex gap-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      {p.firstName[0]}
-                      {p.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">
-                      {p.firstName} {p.lastName}
-                    </p>
-                    <p className="text-xs text-gray-500">{p.id}</p>
                   </div>
+                  <Badge>{getFieldValue(p.primary_doctor)}</Badge>
                 </div>
-                <Badge>{p.primaryDoctor}</Badge>
-              </div>
 
-              <div className="mt-3 text-sm text-gray-600">
-                <p>📞 {p.phone}</p>
-                <p>📧 {p.email}</p>
-              </div>
+                <div className="mt-3 text-sm text-gray-600">
+                  <p className="truncate">📞 {p.phone}</p>
+                  <p className="truncate">📧 {p.email}</p>
+                </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setBookingPatient(p);
-                  setBookingOpen(true);
-                }}
-                className="mt-3 w-full py-2 bg-cyan-600 text-white rounded-lg"
-              >
-                Book Appointment
-              </button>
-            </div>
-          ))}
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.info("Loading patient details for editing...");
+                      navigate("/edit-patient", { state: { patient: p } });
+                    }}
+                    className="w-full py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                  >
+                    <Edit2 size={14} className="inline mr-1" />
+                    Edit Patient
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.info("Loading patient history...");
+                      navigate("/patient-history", { state: { patient: p } });
+                    }}
+                    className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    View History
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setBookingPatient(p);
+                      setBookingOpen(true);
+                      toast.info(
+                        `Ready to book appointment for ${p.first_name}`,
+                      );
+                    }}
+                    className="w-full py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                  >
+                    Book Appointment
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* DETAILS DRAWER */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -367,30 +537,32 @@ export default function Patients() {
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div className="h-12 w-12 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold text-lg">
-                  {selectedPatient?.firstName?.[0]}
-                  {selectedPatient?.lastName?.[0]}
+                  {selectedPatient?.first_name?.[0]}
+                  {selectedPatient?.last_name?.[0]}
                 </div>
 
                 <div>
                   <DrawerTitle className="text-lg">
                     {selectedPatient
-                      ? `${selectedPatient.title} ${selectedPatient.firstName} ${selectedPatient.lastName}`
+                      ? `${getFieldValue(selectedPatient.title)} ${
+                          selectedPatient.first_name
+                        } ${selectedPatient.last_name}`
                       : "Patient Details"}
                   </DrawerTitle>
 
                   {selectedPatient && (
                     <div className="flex gap-2 mt-1">
                       <span className="text-xs px-3 py-1 rounded-full bg-cyan-100 text-cyan-700">
-                        {selectedPatient.bloodGroup}
+                        {getFieldValue(selectedPatient.blood_group)}
                       </span>
                       <span
                         className={`text-xs px-3 py-1 rounded-full ${
-                          selectedPatient.newPatient === "Yes"
+                          selectedPatient.new_patient === true
                             ? "bg-blue-100 text-blue-700"
                             : "bg-green-100 text-green-700"
                         }`}
                       >
-                        {selectedPatient.newPatient === "Yes"
+                        {selectedPatient.new_patient === true
                           ? "New Patient"
                           : "Existing"}
                       </span>
@@ -412,47 +584,124 @@ export default function Patients() {
                 {/* PERSONAL INFO */}
                 <Section title="Personal Information">
                   <InfoRow label="Patient ID" value={selectedPatient.id} />
-                  <InfoRow label="Gender" value={selectedPatient.gender} />
+                  <InfoRow
+                    label="Title"
+                    value={getFieldValue(selectedPatient.title)}
+                  />
+                  <InfoRow
+                    label="Gender"
+                    value={getFieldValue(selectedPatient.gender)}
+                  />
                   <InfoRow
                     label="Birth Date"
-                    value={selectedPatient.birthDate}
+                    value={getFieldValue(selectedPatient.birth_date)}
                   />
                   <InfoRow
                     label="Identity Number"
-                    value={selectedPatient.identityNumber}
+                    value={getFieldValue(selectedPatient.identity_number)}
+                  />
+                  <InfoRow
+                    label="Maiden Name"
+                    value={getFieldValue(selectedPatient.maiden_name)}
                   />
                 </Section>
 
                 {/* CONTACT INFO */}
                 <Section title="Contact Information">
-                  <InfoRow label="Phone" value={selectedPatient.phone} />
-                  <InfoRow label="Email" value={selectedPatient.email} />
+                  <InfoRow
+                    label="Phone"
+                    value={getFieldValue(selectedPatient.phone)}
+                  />
+                  <InfoRow
+                    label="Secondary Phone"
+                    value={getFieldValue(selectedPatient.secondary_phone)}
+                  />
+                  <InfoRow
+                    label="Other Phone"
+                    value={getFieldValue(selectedPatient.other_phone)}
+                  />
+                  <InfoRow
+                    label="Email"
+                    value={getFieldValue(selectedPatient.email)}
+                  />
                 </Section>
 
                 {/* MEDICAL INFO */}
                 <Section title="Medical Information">
                   <InfoRow
+                    label="Blood Group"
+                    value={getFieldValue(selectedPatient.blood_group)}
+                  />
+                  <InfoRow
                     label="Height"
-                    value={`${selectedPatient.height} cm`}
+                    value={
+                      selectedPatient.height && selectedPatient.height > 0
+                        ? `${selectedPatient.height} cm`
+                        : "N/A"
+                    }
                   />
                   <InfoRow
                     label="Weight"
-                    value={`${selectedPatient.weight} kg`}
+                    value={
+                      selectedPatient.weight && selectedPatient.weight > 0
+                        ? `${selectedPatient.weight} kg`
+                        : "N/A"
+                    }
                   />
-                  <InfoRow label="Smoker" value={selectedPatient.smoker} />
+                  <InfoRow
+                    label="Smoker"
+                    value={getFieldValue(selectedPatient.smoker)}
+                  />
+                  <InfoRow
+                    label="Cigarettes Per Day"
+                    value={getFieldValue(selectedPatient.cigarettes_per_day)}
+                  />
                   <InfoRow
                     label="Primary Doctor"
-                    value={selectedPatient.primaryDoctor}
+                    value={getFieldValue(selectedPatient.primary_doctor)}
+                  />
+                </Section>
+
+                {/* MEDICAL HISTORY */}
+                <Section title="Medical History">
+                  <InfoRow
+                    label="Family History"
+                    value={getFieldValue(selectedPatient.family_history)}
+                  />
+                  <InfoRow
+                    label="Medical / Surgical History"
+                    value={getFieldValue(selectedPatient.medical_history)}
+                  />
+                  <InfoRow
+                    label="Gynecological History"
+                    value={getFieldValue(selectedPatient.gynecological_history)}
+                  />
+                  <InfoRow
+                    label="Allergies"
+                    value={getFieldValue(selectedPatient.allergies)}
                   />
                 </Section>
 
                 {/* OTHER */}
                 <Section title="Other Details">
                   <InfoRow
-                    label="Legacy Number"
-                    value={selectedPatient.legacyNumber}
+                    label="Delivery Location"
+                    value={getFieldValue(selectedPatient.delivery_location)}
                   />
-                  <InfoRow label="Notes" value={selectedPatient.notes} />
+                  <InfoRow
+                    label="Legacy Number"
+                    value={getFieldValue(selectedPatient.legacy_number)}
+                  />
+                  <InfoRow
+                    label="Social Security Number"
+                    value={getFieldValue(
+                      selectedPatient.social_security_number,
+                    )}
+                  />
+                  <InfoRow
+                    label="Notes"
+                    value={getFieldValue(selectedPatient.notes)}
+                  />
                 </Section>
               </>
             ) : (
@@ -461,12 +710,32 @@ export default function Patients() {
           </div>
 
           {/* FOOTER */}
-          <DrawerFooter className="border-t bg-white">
+          <DrawerFooter className="border-t bg-white flex gap-3">
             <button
               onClick={() => setDrawerOpen(false)}
-              className="w-full py-2 rounded-lg border hover:bg-gray-50"
+              className="flex-1 py-2 rounded-lg border hover:bg-gray-50 transition-colors font-medium"
             >
               Close
+            </button>
+
+            <button
+              onClick={() => {
+                setDrawerOpen(false);
+                toast.info("Loading patient details for editing...");
+                navigate(`/patients/${selectedPatient?.id}/edit`);
+              }}
+              className="flex-1 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors font-medium"
+            >
+              <Edit2 size={14} className="inline mr-2" />
+              Edit
+            </button>
+
+            <button
+              onClick={() => handleDeletePatient(selectedPatient.id)}
+              disabled={deletePatient.isPending}
+              className="flex-1 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors font-medium"
+            >
+              {deletePatient.isPending ? "Deleting..." : "Delete"}
             </button>
           </DrawerFooter>
         </DrawerContent>
@@ -492,84 +761,89 @@ export default function Patients() {
             <p className="text-sm text-gray-600">
               Patient:{" "}
               <b>
-                {bookingPatient?.firstName} {bookingPatient?.lastName}
+                {bookingPatient?.first_name} {bookingPatient?.last_name}
               </b>
             </p>
 
-            {/* DOCTOR */}
-            <select
-              value={doctor}
-              onChange={(e) => setDoctor(e.target.value)}
-              className="w-full border px-4 py-2 rounded-lg"
-            >
-              <option value="">Select Doctor</option>
-              {doctors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-
             {/* DATE */}
-            <input
-              type="date"
-              value={date}
-              min={new Date().toISOString().split("T")[0]}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full border px-4 py-2 rounded-lg cursor-pointer"
-            />
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">
+                Appointment Date
+              </label>
+              <input
+                type="date"
+                value={date}
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full border px-4 py-2 rounded-lg"
+              />
+            </div>
 
-            {/* TIME SLOTS */}
-            {doctor && date && (
-              <div>
-                <p className="text-sm font-semibold mb-2">Available Slots</p>
-
-                {availableSlots.length === 0 ? (
-                  <p className="text-sm text-red-500">No slots available</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {availableSlots.map((t) => {
-                      const isBooked = bookedSlots[`${doctor}_${date}_${t}`];
-
-                      return (
-                        <button
-                          key={t}
-                          disabled={isBooked}
-                          onClick={() => setTime(t)}
-                          className={`
-                      py-2 rounded-lg text-sm
-                      ${
-                        isBooked
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : time === t
-                          ? "bg-cyan-600 text-white"
-                          : "bg-gray-100 hover:bg-gray-200"
-                      }
-                    `}
-                        >
-                          {t}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* TIME */}
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">
+                Appointment Time
+              </label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full border px-4 py-2 rounded-lg"
+              />
+            </div>
           </div>
 
           <DrawerFooter>
             <button
               onClick={() => {
-                if (!doctor || !date || !time) {
-                  alert("Please fill all fields");
+                if (!date || !time) {
+                  toast.error(
+                    "Please select both date and time for the appointment",
+                  );
                   return;
                 }
-                alert("Appointment Booked ✅");
-                setBookingOpen(false);
+
+                const toastId = toast.loading("Booking appointment...");
+
+                createAppointment.mutate(
+                  {
+                    patient_id: bookingPatient.id,
+                    date,
+                    time,
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.dismiss(toastId);
+                      toast.success("Appointment booked successfully!");
+
+                      Swal.fire({
+                        title: "Success!",
+                        text: `Appointment scheduled for ${date} at ${time}`,
+                        icon: "success",
+                        timer: 2500,
+                        showConfirmButton: false,
+                      });
+
+                      setBookingOpen(false);
+                      setDate("");
+                      setTime("");
+                    },
+                    onError: (error: any) => {
+                      toast.dismiss(toastId);
+                      const errorMsg =
+                        error?.response?.data?.message ||
+                        "Failed to book appointment";
+                      toast.error(errorMsg);
+                    },
+                  },
+                );
               }}
-              className="w-full py-3 bg-cyan-600 text-white rounded-lg"
+              disabled={createAppointment.isPending}
+              className="w-full py-3 bg-cyan-600 text-white rounded-lg disabled:opacity-50 hover:bg-cyan-700 transition-colors"
             >
-              Confirm Appointment
+              {createAppointment.isPending
+                ? "Booking..."
+                : "Confirm Appointment"}
             </button>
           </DrawerFooter>
         </DrawerContent>
@@ -633,55 +907,220 @@ export default function Patients() {
               {/* PERSONAL INFO */}
               <Section title="Personal Information">
                 <Grid>
-                  <Input label="Title" />
-                  <Input label="First Name *" />
-                  <Input label="Last Name" />
-                  <Input label="Maiden Name" />
-                  <Input label="Gender" />
-                  <Input label="Birth Date" type="date" />
-                  <Input label="Identity Number" />
-                  <Input label="Social Security Number" />
+                  <Input
+                    label="Title"
+                    value={formData.title}
+                    onChange={(value: string) =>
+                      handleInputChange("title", value)
+                    }
+                  />
+                  <Input
+                    label="First Name *"
+                    value={formData.first_name}
+                    onChange={(value: string) =>
+                      handleInputChange("first_name", value)
+                    }
+                  />
+                  <Input
+                    label="Last Name"
+                    value={formData.last_name}
+                    onChange={(value: string) =>
+                      handleInputChange("last_name", value)
+                    }
+                  />
+                  <Input
+                    label="Maiden Name"
+                    value={formData.maiden_name}
+                    onChange={(value: string) =>
+                      handleInputChange("maiden_name", value)
+                    }
+                  />
+                  <Input
+                    label="Gender"
+                    value={formData.gender}
+                    onChange={(value: string) =>
+                      handleInputChange("gender", value)
+                    }
+                  />
+                  <Input
+                    label="Birth Date"
+                    type="date"
+                    value={formData.birth_date}
+                    onChange={(value: string) =>
+                      handleInputChange("birth_date", value)
+                    }
+                  />
+                  <Input
+                    label="Identity Number"
+                    value={formData.identity_number}
+                    onChange={(value: string) =>
+                      handleInputChange("identity_number", value)
+                    }
+                  />
+                  <Input
+                    label="Social Security Number"
+                    value={formData.social_security_number}
+                    onChange={(value: string) =>
+                      handleInputChange("social_security_number", value)
+                    }
+                  />
                 </Grid>
               </Section>
 
               {/* CONTACT INFO */}
               <Section title="Contact Information">
                 <Grid>
-                  <Input label="Email" />
-                  <Input label="Phone" />
-                  <Input label="Secondary Phone" />
-                  <Input label="Other Phone" />
-                  <Input label="Occupation" />
+                  <Input
+                    label="Email"
+                    value={formData.email}
+                    onChange={(value: string) =>
+                      handleInputChange("email", value)
+                    }
+                  />
+                  <Input
+                    label="Phone"
+                    value={formData.phone}
+                    onChange={(value: string) =>
+                      handleInputChange("phone", value)
+                    }
+                  />
+                  <Input
+                    label="Secondary Phone"
+                    value={formData.secondary_phone}
+                    onChange={(value: string) =>
+                      handleInputChange("secondary_phone", value)
+                    }
+                  />
+                  <Input
+                    label="Other Phone"
+                    value={formData.other_phone}
+                    onChange={(value: string) =>
+                      handleInputChange("other_phone", value)
+                    }
+                  />
+                  <Input
+                    label="Occupation"
+                    value={formData.occupation}
+                    onChange={(value: string) =>
+                      handleInputChange("occupation", value)
+                    }
+                  />
                 </Grid>
               </Section>
 
               {/* MEDICAL INFO */}
               <Section title="Medical Information">
                 <Grid>
-                  <Input label="Height (cm)" />
-                  <Input label="Weight (kg)" />
-                  <Input label="Blood Group" />
-                  <Select label="Smoker" options={["No", "Yes"]} />
-                  <Input label="Cigarettes Per Day" />
+                  <Input
+                    label="Height (cm)"
+                    value={formData.height}
+                    onChange={(value: string) =>
+                      handleInputChange("height", value)
+                    }
+                  />
+                  <Input
+                    label="Weight (kg)"
+                    value={formData.weight}
+                    onChange={(value: string) =>
+                      handleInputChange("weight", value)
+                    }
+                  />
+                  <Input
+                    label="Blood Group"
+                    value={formData.blood_group}
+                    onChange={(value: string) =>
+                      handleInputChange("blood_group", value)
+                    }
+                  />
+                  <Select
+                    label="Smoker"
+                    options={["No", "Yes"]}
+                    value={formData.smoker}
+                    onChange={(value: string) =>
+                      handleInputChange("smoker", value)
+                    }
+                  />
+                  <Input
+                    label="Cigarettes Per Day"
+                    value={formData.cigarettes_per_day}
+                    onChange={(value: string) =>
+                      handleInputChange("cigarettes_per_day", value)
+                    }
+                  />
                 </Grid>
               </Section>
 
               {/* MEDICAL HISTORY */}
               <Section title="Medical History">
-                <Textarea label="Family History" />
-                <Textarea label="Medical / Surgical History" />
-                <Textarea label="Gynecological History" />
-                <Textarea label="Allergies" />
-                <Textarea label="Notes" />
+                <Textarea
+                  label="Family History"
+                  value={formData.family_history}
+                  onChange={(value: string) =>
+                    handleInputChange("family_history", value)
+                  }
+                />
+                <Textarea
+                  label="Medical / Surgical History"
+                  value={formData.medical_history}
+                  onChange={(value: string) =>
+                    handleInputChange("medical_history", value)
+                  }
+                />
+                <Textarea
+                  label="Gynecological History"
+                  value={formData.gynecological_history}
+                  onChange={(value: string) =>
+                    handleInputChange("gynecological_history", value)
+                  }
+                />
+                <Textarea
+                  label="Allergies"
+                  value={formData.allergies}
+                  onChange={(value: string) =>
+                    handleInputChange("allergies", value)
+                  }
+                />
+                <Textarea
+                  label="Notes"
+                  value={formData.notes}
+                  onChange={(value: string) =>
+                    handleInputChange("notes", value)
+                  }
+                />
               </Section>
 
               {/* OTHER DETAILS */}
               <Section title="Other Details">
                 <Grid>
-                  <Input label="Primary Doctor" />
-                  <Input label="Delivery Location" />
-                  <Input label="Legacy Number" />
-                  <Select label="New Patient" options={["Yes", "No"]} />
+                  <Input
+                    label="Primary Doctor"
+                    value={formData.primary_doctor}
+                    onChange={(value: string) =>
+                      handleInputChange("primary_doctor", value)
+                    }
+                  />
+                  <Input
+                    label="Delivery Location"
+                    value={formData.delivery_location}
+                    onChange={(value: string) =>
+                      handleInputChange("delivery_location", value)
+                    }
+                  />
+                  <Input
+                    label="Legacy Number"
+                    value={formData.legacy_number}
+                    onChange={(value: string) =>
+                      handleInputChange("legacy_number", value)
+                    }
+                  />
+                  <Select
+                    label="New Patient"
+                    options={["Yes", "No"]}
+                    value={formData.new_patient ? "Yes" : "No"}
+                    onChange={(value: string) =>
+                      handleInputChange("new_patient", value === "Yes")
+                    }
+                  />
                 </Grid>
               </Section>
             </div>
@@ -689,13 +1128,62 @@ export default function Patients() {
             {/* MODAL FOOTER (ALWAYS VISIBLE) */}
             <div className="flex justify-end gap-4 px-6 py-4 border-t bg-white  shrink-0">
               <button
-                onClick={() => setShowModal(false)}
-                className="px-6 py-2 rounded-lg border bg-white-400 hover:bg-red-600 text-black font-semibold"
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                className="px-6 py-2 rounded-lg border bg-white-400 hover:bg-red-600 text-black font-semibold transition-colors"
               >
                 Cancel
               </button>
-              <button className="px-6 py-2 rounded-lg border bg-white-600 hover:bg-green-600 text-black font-semibold">
-                Save Patient
+              <button
+                onClick={() => {
+                  // Validation
+                  if (!formData.first_name.trim()) {
+                    toast.error("First name is required");
+                    return;
+                  }
+
+                  if (!formData.email && !formData.phone) {
+                    toast.error(
+                      "Please provide at least email or phone number",
+                    );
+                    return;
+                  }
+
+                  const toastId = toast.loading("Adding patient...");
+
+                  addPatient.mutate(formData, {
+                    onSuccess: () => {
+                      toast.dismiss(toastId);
+                      toast.success(
+                        `${formData.first_name} ${formData.last_name} added successfully!`,
+                      );
+
+                      Swal.fire({
+                        title: "Patient Added!",
+                        text: `${formData.first_name} ${formData.last_name} has been added to the system.`,
+                        icon: "success",
+                        timer: 2500,
+                        showConfirmButton: false,
+                      });
+
+                      resetForm();
+                      setShowModal(false);
+                    },
+                    onError: (error: any) => {
+                      toast.dismiss(toastId);
+                      const errorMsg =
+                        error?.response?.data?.message ||
+                        "Failed to add patient. Please try again.";
+                      toast.error(errorMsg);
+                    },
+                  });
+                }}
+                disabled={addPatient.isPending}
+                className="px-6 py-2 rounded-lg border bg-white-600 hover:bg-green-600 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {addPatient.isPending ? "Saving..." : "Save Patient"}
               </button>
             </div>
           </div>
@@ -724,35 +1212,43 @@ function Grid({ children }: any) {
   );
 }
 
-function Input({ label, type = "text" }: any) {
+function Input({ label, type = "text", value = "", onChange }: any) {
   return (
     <div>
       <label className="text-sm text-gray-600 mb-1 block">{label}</label>
       <input
         type={type}
+        value={value}
+        onChange={(e) => onChange && onChange(e.target.value)}
         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#06b6c9] outline-none"
       />
     </div>
   );
 }
 
-function Textarea({ label }: any) {
+function Textarea({ label, value = "", onChange }: any) {
   return (
     <div>
       <label className="text-sm text-gray-600 mb-1 block">{label}</label>
       <textarea
         rows={3}
+        value={value}
+        onChange={(e) => onChange && onChange(e.target.value)}
         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#06b6c9] outline-none"
       />
     </div>
   );
 }
 
-function Select({ label, options }: any) {
+function Select({ label, options, value = "", onChange }: any) {
   return (
     <div>
       <label className="text-sm text-gray-600 mb-1 block">{label}</label>
-      <select className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#06b6c9] outline-none">
+      <select
+        value={value}
+        onChange={(e) => onChange && onChange(e.target.value)}
+        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#06b6c9] outline-none"
+      >
         {options.map((o: string) => (
           <option key={o}>{o}</option>
         ))}
