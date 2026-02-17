@@ -43,7 +43,7 @@ const Login: React.FC = () => {
         localStorage.setItem("refresh_token", response.refresh_token);
         // Save role separately (optional)
         localStorage.setItem("role", user.role);
-
+       // localStorage.setItem("clinic_id", response.data.clinic_id.toString());
         console.log("User Role:", user.role);
 
         navigate("/home");

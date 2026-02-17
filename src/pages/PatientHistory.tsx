@@ -12,6 +12,7 @@ export default function PatientHistory() {
 
   const timeline = data?.timeline || [];
   const patient = data?.patient;
+  const dicoms = data?.dicom || [];
 
   // 🔥 SINGLE source of truth for opened DICOM
   const [openDicomId, setOpenDicomId] = useState<number | null>(null);
@@ -22,6 +23,11 @@ export default function PatientHistory() {
       return;
     }
     window.open(prescription.pdf_path, "_blank");
+  };
+
+  // ✅ GET DICOMs FOR APPOINTMENT
+  const getDicomsForAppointment = (appointmentId: number) => {
+    return dicoms.filter((d: any) => d.visit_id === appointmentId);
   };
 
   return (
@@ -39,7 +45,9 @@ export default function PatientHistory() {
           <h1 className="text-2xl font-semibold">
             {patient?.first_name} {patient?.last_name}
           </h1>
-          <div className="text-sm text-gray-500">ID: {patient?.id || "-"}</div>
+          <div className="text-sm text-gray-500">
+            ID: {patient?.id || "-"}
+          </div>
         </div>
       </div>
 
@@ -62,71 +70,78 @@ export default function PatientHistory() {
             <h2 className="font-bold text-lg text-gray-700">{day.date}</h2>
 
             {/* APPOINTMENTS */}
-            {day.appointments?.map((appointment: any) => (
-              <div
-                key={appointment.id}
-                className="bg-white rounded-xl shadow p-4"
-              >
-                <div className="flex justify-between">
-                  <div>
-                    <div className="font-semibold">{appointment.doctor}</div>
-                    <div className="text-sm text-gray-500">
-                      {appointment.time}
+            {day.appointments?.map((appointment: any) => {
+              const appointmentDicoms =
+                getDicomsForAppointment(appointment.id);
+
+              return (
+                <div
+                  key={appointment.id}
+                  className="bg-white rounded-xl shadow p-4"
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <div className="font-semibold">
+                        {appointment.doctor}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {appointment.time}
+                      </div>
+                    </div>
+                    <div className="text-sm px-3 py-1 bg-gray-100 rounded">
+                      {appointment.status}
                     </div>
                   </div>
-                  <div className="text-sm px-3 py-1 bg-gray-100 rounded">
-                    {appointment.status}
-                  </div>
+
+                  {/* PRESCRIPTIONS */}
+                  {day.prescriptions?.map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="mt-4 border-t pt-4 flex justify-between items-center"
+                    >
+                      <div className="text-sm">
+                        {p.medicine} — {p.duration_days} Days
+                      </div>
+                      <button
+                        onClick={() => downloadPrescription(p)}
+                        className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded text-xs"
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* 🔥 DICOM BUTTON */}
+                  {appointmentDicoms.length > 0 && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() =>
+                          setOpenDicomId(
+                            openDicomId === appointmentDicoms[0].id
+                              ? null
+                              : appointmentDicoms[0].id
+                          )
+                        }
+                        className="flex items-center gap-2 text-cyan-600 text-sm"
+                      >
+                        <Image size={14} />
+                        {openDicomId === appointmentDicoms[0].id
+                          ? "Hide DICOM"
+                          : "View DICOM"}
+                      </button>
+                    </div>
+                  )}
                 </div>
+              );
+            })}
 
-                {/* PRESCRIPTIONS */}
-                {day.prescriptions?.map((p: any) => (
-                  <div
-                    key={p.id}
-                    className="mt-4 border-t pt-4 flex justify-between items-center"
-                  >
-                    <div className="text-sm">
-                      {p.medicine} — {p.duration_days} Days
-                    </div>
-                    <button
-                      onClick={() => downloadPrescription(p)}
-                      className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded text-xs"
-                    >
-                      <Download size={14} />
-                      Download
-                    </button>
-                  </div>
-                ))}
-
-                {/* 🔥 DICOM BUTTON (Viewer NOT here) */}
-                {day.dicom?.length > 0 && (
-                  <div className="mt-4">
-                    <button
-                      onClick={() =>
-                        setOpenDicomId(
-                          openDicomId === day.dicom[0].id
-                            ? null
-                            : day.dicom[0].id,
-                        )
-                      }
-                      className="flex items-center gap-2 text-cyan-600 text-sm"
-                    >
-                      <Image size={14} />
-                      {openDicomId === day.dicom[0].id
-                        ? "Hide DICOM"
-                        : "View DICOM"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* 🔥 SINGLE DICOM VIEWER PER DAY */}
+            {/* 🔥 SINGLE DICOM VIEWER */}
             {openDicomId &&
-              day.dicom?.some((d: any) => d.id === openDicomId) && (
+              dicoms.some((d: any) => d.id === openDicomId) && (
                 <DicomViewer
-                  fileUrl={`http://129.121.75.225${
-                    day.dicom.find((d: any) => d.id === openDicomId).file_url
+                  fileUrl={`https://api.clinicalgynecologists.space${
+                    dicoms.find((d: any) => d.id === openDicomId).file_url
                   }`}
                 />
               )}
