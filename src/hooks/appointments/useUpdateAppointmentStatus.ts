@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateAppointmentStatusService } from "@/services/appointment.service";
 
-export const useUpdateAppointmentStatus = (date?: string) => {
+export const useUpdateAppointmentStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -13,12 +13,10 @@ export const useUpdateAppointmentStatus = (date?: string) => {
       status: string;
     }) => updateAppointmentStatusService(id, status),
 
-    // 🔥 Optimistic update
-   
- onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["appointments", date],
-      });
+    onSuccess: () => {
+      // 🔥 refresh BOTH APIs
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["filteredAppointments"] });
     },
   });
 };
