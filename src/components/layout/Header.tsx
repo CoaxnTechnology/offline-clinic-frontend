@@ -1,7 +1,6 @@
 import { FC, useEffect } from "react";
 import {
   BellRinging,
-  GearSix,
   UserCircle,
   Globe,
 } from "phosphor-react";
@@ -13,23 +12,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 
-
-
 export const Header: FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  // Get admin name from localStorage
+  /* =====================
+     ADMIN NAME
+  ===================== */
   const admin = localStorage.getItem("admin");
   const adminName = admin ? JSON.parse(admin).name : "Admin";
 
-  // Apply RTL automatically
+  /* =====================
+     APPLY RTL / LANGUAGE
+  ===================== */
   useEffect(() => {
     const savedLang = localStorage.getItem("lang") || "en";
     i18n.changeLanguage(savedLang);
@@ -42,17 +42,33 @@ export const Header: FC = () => {
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   };
 
-
+  /* =====================
+     LOGOUT (FIXED)
+  ===================== */
   const handleLogout = () => {
-  console.log("🚪 Logging out... clearing storage");
+    console.log("🚪 Logging out...");
 
-  localStorage.clear();   // ✅ sab remove
-  sessionStorage.clear(); // (agar use hota ho)
+    // 🔥 Remove ONLY auth-related keys
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("admin");
+    localStorage.removeItem("clinic_id");
 
-  navigate("/", { replace: true });
-};
+    sessionStorage.clear();
 
+    console.log("🧹 Storage after logout:", {
+      access_token: localStorage.getItem("access_token"),
+      refresh_token: localStorage.getItem("refresh_token"),
+      role: localStorage.getItem("role"),
+    });
 
+    navigate("/", { replace: true });
+  };
+
+  /* =====================
+     UI (UNCHANGED)
+  ===================== */
   return (
     <header className="h-16 border-b border-border bg-blue-600 text-white shadow-sm">
       <div className="flex h-full items-center justify-between px-4 gap-2 sm:gap-4">
@@ -63,8 +79,6 @@ export const Header: FC = () => {
 
         {/* Right - Icons & User */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          
-
           {/* Language Switch */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -127,11 +141,6 @@ export const Header: FC = () => {
                 <UserCircle className="mr-2 h-4 w-4" />
                 {t("profile")}
               </DropdownMenuItem>
-
-              {/* <DropdownMenuItem>
-                <GearSix className="mr-2 h-4 w-4" />
-                {t("settings")}
-              </DropdownMenuItem> */}
 
               <DropdownMenuSeparator />
 
