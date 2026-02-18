@@ -1,16 +1,86 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useCreatePrescription } from "@/hooks/prescriptions/useCreatePrescription";
-import { useLocation } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+
+/* =====================
+   JWT TYPE
+===================== */
+interface DecodedToken {
+  clinic_id?: number;
+  role?: string;
+  exp: number;
+}
 
 export default function Prescription() {
   const { id } = useParams();
-  const createPrescriptionMutation = useCreatePrescription();
+  const navigate = useNavigate();
   const location = useLocation();
+
   const patient = location.state?.patient;
   const doctor = location.state?.doctor;
   const department = location.state?.department;
 
+  const createPrescriptionMutation = useCreatePrescription();
+
+  /* =====================
+     CLINIC DATA
+  ===================== */
+  const [clinic, setClinic] = useState<any>(null);
+  const [clinicLogo, setClinicLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    /* =====================
+       GET clinic_id FROM JWT
+    ===================== */
+    const decoded = jwtDecode<DecodedToken>(token);
+    const clinicId = decoded.clinic_id;
+
+    if (!clinicId) {
+      console.log("❌ clinic_id not found in token");
+      return;
+    }
+
+    /* =====================
+       FETCH CLINIC DATA
+    ===================== */
+    fetch(`https://api.clinicalgynecologists.space/api/clinics/${clinicId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then(async (data) => {
+        if (!data?.success) return;
+
+        setClinic(data.data);
+
+        /* =====================
+           LOAD LOGO WITH AUTH
+        ===================== */
+        if (data.data.logo_url) {
+          const logoRes = await fetch(data.data.logo_url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          const blob = await logoRes.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          setClinicLogo(objectUrl);
+        }
+      })
+      .catch((err) => {
+        console.error("Clinic fetch failed", err);
+      });
+  }, []);
+
+  /* =====================
+     MEDICINES
+  ===================== */
   const [items, setItems] = useState([
     {
       medicine: "",
@@ -32,7 +102,10 @@ export default function Prescription() {
       prev.map((item, i) => (i === index ? { ...item, [key]: value } : item)),
     );
   };
-  const navigate = useNavigate();
+
+  /* =====================
+     SAVE PRESCRIPTION
+  ===================== */
   const handleSave = () => {
     if (!id) {
       alert("Invalid appointment ❌");
@@ -50,8 +123,6 @@ export default function Prescription() {
       })),
     };
 
-    console.log("Sending Prescription:", payload);
-
     createPrescriptionMutation.mutate(payload, {
       onSuccess: () => {
         alert("Prescription saved successfully ✅");
@@ -67,6 +138,9 @@ export default function Prescription() {
     window.print();
   };
 
+  /* =====================
+     UI (UNCHANGED)
+  ===================== */
   return (
     <div className="min-h-screen bg-gray-100 p-6 print:bg-white print:p-0">
       <div className="max-w-4xl mx-auto bg-white shadow-lg p-8 print:shadow-none">
@@ -74,20 +148,24 @@ export default function Prescription() {
         <div className="flex items-center justify-between border-b pb-4">
           <div className="flex items-center gap-4">
             <img
-              src="/logo.png"
+              src={clinicLogo || "/logo.png"}
               alt="Hospital Logo"
               className="h-16 w-16 object-contain"
             />
+
             <div>
               <h1 className="text-2xl font-bold">
-                Sunshine Multispeciality Hospital
+                {clinic?.hospital_name || clinic?.name || "Hospital Name"}
               </h1>
               <p className="text-sm text-gray-600">
-                123 Medical Road, Ahmedabad, Gujarat
+                {clinic?.clinic_address || clinic?.address || ""}
               </p>
-              <p className="text-sm text-gray-600">Phone: +91 99999 99999</p>
+              <p className="text-sm text-gray-600">
+                Phone: {clinic?.contact_number || clinic?.phone || ""}
+              </p>
             </div>
           </div>
+
           <div className="text-right">
             <p className="text-sm">Prescription ID: {id}</p>
             <p className="text-sm">Date: {new Date().toLocaleDateString()}</p>
@@ -119,7 +197,9 @@ export default function Prescription() {
           </div>
 
           <div>
-            <strong>Doctor:</strong> {doctor || "N/A"}
+            <p>
+              <strong>Doctor:</strong> {doctor || "N/A"}
+            </p>
             <p>
               <strong>Department:</strong> {department || "N/A"}
             </p>
@@ -159,7 +239,6 @@ export default function Prescription() {
                     />
                   </td>
                   <td className="border px-2 py-2">
-                    {/* Editable in screen */}
                     <input
                       value={item.duration_days}
                       onChange={(e) =>
@@ -167,13 +246,10 @@ export default function Prescription() {
                       }
                       className="w-full outline-none print:hidden"
                     />
-
-                    {/* Visible in PDF */}
                     <span className="hidden print:block">
                       {item.duration_days ? `${item.duration_days} Days` : ""}
                     </span>
                   </td>
-
                   <td className="border px-2 py-2">
                     <input
                       value={item.notes}
@@ -198,35 +274,29 @@ export default function Prescription() {
 
         {/* 🔹 SIGNATURE */}
         <div className="mt-16 flex justify-between">
-          <div>
-            <p className="border-t pt-2 w-40 text-center text-sm">
-              Patient Signature
-            </p>
-          </div>
-          <div>
-            <p className="border-t pt-2 w-40 text-center text-sm">
-              Doctor Signature
-            </p>
-          </div>
+          <p className="border-t pt-2 w-40 text-center text-sm">
+            Patient Signature
+          </p>
+          <p className="border-t pt-2 w-40 text-center text-sm">
+            Doctor Signature
+          </p>
         </div>
 
-        {/* 🔹 PRINT BUTTON (Hidden in PDF) */}
-        <div className="mt-10 text-right print:hidden">
-          <div className="mt-10 flex justify-end gap-4 print:hidden">
-            <button
-              onClick={handleSave}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg"
-            >
-              Save
-            </button>
+        {/* 🔹 ACTION BUTTONS */}
+        <div className="mt-10 flex justify-end gap-4 print:hidden">
+          <button
+            onClick={handleSave}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Save
+          </button>
 
-            <button
-              onClick={handlePrint}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg"
-            >
-              Download / Print
-            </button>
-          </div>
+          <button
+            onClick={handlePrint}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg"
+          >
+            Download / Print
+          </button>
         </div>
       </div>
     </div>
