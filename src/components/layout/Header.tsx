@@ -44,10 +44,14 @@ export const Header: FC = () => {
 
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("admin");
-    navigate("/");
-  };
+  console.log("🚪 Logging out... clearing storage");
+
+  localStorage.clear();   // ✅ sab remove
+  sessionStorage.clear(); // (agar use hota ho)
+
+  navigate("/", { replace: true });
+};
+
 
   return (
     <header className="h-16 border-b border-border bg-blue-600 text-white shadow-sm">
