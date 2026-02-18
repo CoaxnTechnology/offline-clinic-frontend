@@ -332,4 +332,3 @@ export default function SettingsPage() {
     </>
   );
 }
-//new changes
