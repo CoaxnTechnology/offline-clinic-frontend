@@ -94,7 +94,7 @@ export function AppSidebar() {
   }, []);
 
   const navigationItems: NavItem[] = [
-    { key: "dashboard", url: "/Home", icon: LayoutDashboard },
+   // { key: "dashboard", url: "/Home", icon: LayoutDashboard },
     { key: "patients", url: "/patients", icon: Users },
     { key: "appointment", url: "/appointment", icon: CalendarCheck },
     { key: "consultant", url: "/consultant", icon: Stethoscope },

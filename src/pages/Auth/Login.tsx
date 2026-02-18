@@ -46,7 +46,7 @@ const Login: React.FC = () => {
        // localStorage.setItem("clinic_id", response.data.clinic_id.toString());
         console.log("User Role:", user.role);
 
-        navigate("/home");
+        navigate("/patients");
       } else {
         setError("Invalid username or password");
       }
