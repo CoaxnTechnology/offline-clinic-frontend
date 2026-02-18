@@ -198,7 +198,12 @@ export default function Appointments() {
           <tbody>
             {filteredAppointments.map((a) => (
               <tr key={a.id} className="border-t">
-                <td className="px-6 py-4">{a.patient}</td>
+                <td>
+                  {a.patient
+                    ? `${a.patient.first_name} ${a.patient.last_name}`
+                    : "N/A"}
+                </td>
+
                 <td className="px-6 py-4">{a.doctor}</td>
                 <td className="px-6 py-4">{a.date}</td>
                 <td className="px-6 py-4">{a.time}</td>
@@ -242,7 +247,12 @@ export default function Appointments() {
         {filteredAppointments.map((a) => (
           <div key={a.id} className="bg-white p-4 rounded-xl shadow space-y-2">
             <div className="flex justify-between">
-              <p className="font-semibold">{a.patient}</p>
+              <p className="font-semibold">
+                {a.patient
+                  ? `${a.patient.first_name} ${a.patient.last_name}`
+                  : "N/A"}
+              </p>
+
               <Badge className={statusColors[a.status]}>{a.status}</Badge>
             </div>
             <p className="text-sm text-gray-600">{a.doctor}</p>
