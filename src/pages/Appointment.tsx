@@ -114,22 +114,22 @@ export default function Appointments() {
     updateStatusMutation.mutate({ id, status });
   };
 
-  const apiAppointments =
-    finalData?.map((item: any) => ({
-      id: item.id,
-      patient: item.patient
-        ? `${item.patient.first_name} ${item.patient.last_name}`
-        : "N/A",
-      doctor: item.doctor,
-      department: item.department || "General",
-      date: item.date,
-      time: item.time,
-      status: item.status,
-      fullPatient: item.patient,
-    })) || [];
+  // const apiAppointments =
+  //   finalData?.map((item: any) => ({
+  //     id: item.id,
+  //     patient: item.patient
+  //       ? `${item.patient.first_name} ${item.patient.last_name}`
+  //       : "N/A",
+  //     doctor: item.doctor,
+  //     department: item.department || "General",
+  //     date: item.date,
+  //     time: item.time,
+  //     status: item.status,
+  //     fullPatient: item.patient,
+  //   })) || [];
 
-  console.log("Fetched Appointments:", apiAppointments);
-  const filteredAppointments = apiAppointments.filter((a: any) => {
+  //console.log("Fetched Appointments:", apiAppointments);
+  const filteredAppointments = (finalData || []).filter((a: any) => {
     if (filter === "today" && a.date !== today) return false;
     if (filter === "tomorrow" && a.date !== tomorrow) return false;
     if (filter === "yesterday" && a.date !== yesterday) return false;
